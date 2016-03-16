@@ -36,7 +36,7 @@ describe('Another promise', function(){
 
   describe('that is not yet rejected', function(){
 
-    xit('does not call error handlers yet', function(){
+    it('does not call error handlers yet', function(){
       promiseForThing.then( null, fn.logOops );
       expect( fn.logOops ).not.toHaveBeenCalled();
     });
@@ -56,12 +56,12 @@ describe('Another promise', function(){
     // those `handlerGroups`? There is going to have to be some
     // sort of "safety check" somewhere…
 
-    xit('does not call any success handlers', function(){
+    it('does not call any success handlers', function(){
       promiseForThing.then( fn.logOops );
       expect( fn.logOops ).not.toHaveBeenCalled();
     });
 
-    xit('calls an error handler added by .then', function(){
+    it('calls an error handler added by .then', function(){
       promiseForThing.then( null, fn.logOops );
       expect( fn.logOops ).toHaveBeenCalled();
     });
