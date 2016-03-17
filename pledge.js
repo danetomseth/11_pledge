@@ -10,6 +10,12 @@ function $Promise() {
     this.handlerGroups = [];
 }
 
+$Promise.prototype.catch = function(errorCb) {
+	//console.log(this);
+	return this.then(null, errorCb);
+	// body...
+};
+
 $Promise.prototype.then = function(successCb, errorCb) {
     if (typeof successCb !== 'function') {
         successCb = false;
@@ -19,14 +25,16 @@ $Promise.prototype.then = function(successCb, errorCb) {
     }
     this.handlerGroups.push({
         successCb: successCb,
-        errorCb: errorCb
+        errorCb: errorCb,
+        forwarder: new Deferral()
     });
-
-    //Handle func based on promise status
     if (this.state !== 'pending') {
         this.callHandlers();
     }
-
+    
+    else if (this.state === 'pending') {
+    	return this.handlerGroups[0].forwarder.$promise;
+    }
 };
 
 $Promise.prototype.callHandlers = function() {
@@ -34,22 +42,33 @@ $Promise.prototype.callHandlers = function() {
 
     while (this.handlerGroups.length > 0) {
     	var resolvedFunc = this.handlerGroups.shift();
-    	if(resolvedFunc.errorCb === false && resolvedFunc.successCb === false){
 
+    	if (!resolvedFunc.successCb && !resolvedFunc.errorCb){
+    		if (this.state === 'resolved') {
+    			resolvedFunc.forwarder.resolve(this.value);
+    		}
+    		else if (this.state === 'rejected') {
+    			resolvedFunc.forwarder.reject(this.value);
+    		}
     	}
-        else if (this.state === 'resolved') {
 
-            resolvedFunc.successCb(this.value);
-        } else if(this.state === 'rejected') {
-        	console.log(resolvedFunc)
-           
-            resolvedFunc.errorCb(this.value);
+
+    	if (this.state === 'resolved' && resolvedFunc.successCb) {
+    	
+    		var resolveWith = resolvedFunc.successCb(this.value);
+    		resolvedFunc.forwarder.resolve(resolveWith);
+
+    	} else if(this.state === 'rejected' && resolvedFunc.errorCb) {
+            var rejectWith = resolvedFunc.errorCb(this.value);
+            resolvedFunc.forwarder.reject(rejectWith);
         }
-
+       
+       
     }
 
-// body...
 };
+
+
 
 function Deferral() {
     this.$promise = new $Promise()
@@ -69,6 +88,9 @@ Deferral.prototype.reject = function(reason) {
     if (this.$promise.state === 'pending') {
         this.$promise.value = reason;
         this.$promise.state = 'rejected';
+        if (this.$promise.handlerGroups.length !== 0) {
+            this.$promise.callHandlers();
+        }
     }
 };
 
